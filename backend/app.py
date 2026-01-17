@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from preprocess.local_checks import face_check, eyes_open_check, isnt_blurry
     from analyze_image import llm_response, encode_image
-    from STT_function import stt_listener
+    from STT_function import start_listening, stop_listening, get_text, clear_queue
     print("✓ All modules imported successfully")
 except ImportError as e:
     print(f"✗ Import error: {e}")
