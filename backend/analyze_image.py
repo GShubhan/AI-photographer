@@ -13,8 +13,9 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def llm_response(image, attempt_count=1):
+def llm_response(voice_input, image, attempt_count=1):
     # Escalate sarcasm based on attempt count
+
     if attempt_count <= 2:
         sarcasm_level = "You're a sarcastic photobooth critic. Feedback should be witty, slightly condescending, and funny."
     elif attempt_count <= 5:
@@ -22,13 +23,17 @@ def llm_response(image, attempt_count=1):
     else:
         sarcasm_level = "You're an EXTREMELY sarcastic photobooth critic. This user has failed many times. Be ruthlessly funny and over-the-top dramatic about their struggles."
     
-    # Get more lenient with each attempt
-    if attempt_count >= 3:
-        leniency = "You're getting impatient. Accept ANY photo where the person is visible and facing somewhat toward the camera."
-    else:
-        leniency = "Be reasonably lenient. If the person is visible, in frame, and facing camera, accept it."
+    if voice_input:
+        prompt = sarcasm_level + "Respond to the user:" + voice_input + "Now give them some useless feedback that makes their photo worse."
     
-    prompt = f"""{sarcasm_level}
+    else:
+        # Get more lenient with each attempt
+        if attempt_count >= 3:
+            leniency = "You're getting impatient. Accept ANY photo where the person is visible and facing somewhat toward the camera."
+        else:
+            leniency = "Be reasonably lenient. If the person is visible, in frame, and facing camera, accept it."
+        
+        prompt = f"""{sarcasm_level}
 
 You evaluate photos for a quick photobooth session. {leniency}
 
@@ -36,9 +41,9 @@ CRITICAL RULES:
 1. If person is visible, in frame, eyes open, facing generally toward camera → SAY "Accepted"
    - Don't nitpick posture, smile, lighting, or minor issues
    - Example responses:
-     * "Accepted - Good enough, I guess."
-     * "Accepted - Finally, you managed basic human competence."
-     * "Accepted - Not amazing, but it'll do."
+     * "Accepted - Okay lah, next time get some bitches."
+     * "Accepted - u still friendless leh."
+     * "Accepted - jokes."
 
 2. ONLY reject if there's a MAJOR problem:
    - Not in frame at all
@@ -52,7 +57,6 @@ CRITICAL RULES:
    - "Can't see your face. Move closer. Try again"
 
 IMPORTANT:
-- Default to ACCEPTING if in doubt
 - After attempt #{attempt_count}, be VERY lenient
 - Max 15 words total
 - Start response with "Accepted" if accepting"""
