@@ -96,7 +96,7 @@ def analyze():
         max_attempts = 1  # Allow retries if no speech
         
         for attempt in range(max_attempts):
-            stt_result = stt_listener.get_latest_text(timeout=25)  # Increased timeout
+            stt_result = stt_listener.get_latest_text(timeout=8)  # Reduced timeout
             
             if stt_result and stt_result['status'] == 'success':
                 text = stt_result['text']
