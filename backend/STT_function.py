@@ -32,12 +32,13 @@ class STTListener:
         try:
             with sr.Microphone() as source:
                 self.r.adjust_for_ambient_noise(source, duration=1)
+                self.r.pause_threshold = 2.0
                 print("Speak something...")
                 
                 while self.listening:
                     try:
                         # Listen with timeout
-                        audio = self.r.listen(source, timeout=10)
+                        audio = self.r.listen(source, timeout=20)
                         print("Audio captured. Processing...")
                         
                         # Recognize speech

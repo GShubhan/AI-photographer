@@ -1,6 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import './App.css';
 
+const CAPTURE_INTERVAL_MS = 7000;
+const CAPTURE_INTERVAL_SEC = CAPTURE_INTERVAL_MS / 1000;
+
 function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -12,7 +15,7 @@ function App() {
   const [checks, setChecks] = useState({ face: false, eyes: false, blur: 0 });
   const [attemptCount, setAttemptCount] = useState(0);
   const [cameraReady, setCameraReady] = useState(false);
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(CAPTURE_INTERVAL_SEC);
   const [finalImage, setFinalImage] = useState(null);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
@@ -76,7 +79,7 @@ function App() {
       }
     } catch (err) {
       console.error('Camera switch error:', err);
-      setFeedback('❌ Failed to switch camera');
+      setFeedback('Failed to switch camera');
     }
   };
 
@@ -92,19 +95,19 @@ function App() {
     const countdownInterval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          return 3; // Reset to 3
+          return CAPTURE_INTERVAL_SEC; // Reset to interval
         }
         return prev - 1;
       });
     }, 1000);
 
-    // Capture every 3 seconds
+    // Capture every X seconds
     const captureInterval = setInterval(() => {
       if (!isAnalyzing && !accepted) {
         console.log('📸 Triggering capture');
         captureAndAnalyze();
       }
-    }, 3000);
+    }, CAPTURE_INTERVAL_MS);
     
     return () => {
       clearInterval(countdownInterval);
@@ -133,12 +136,12 @@ function App() {
           console.log('📹 Camera settings:', settings);
           
           setCameraReady(true);
-          setFeedback(`Camera ready! Resolution: ${settings.width}x${settings.height}. First capture in 3 seconds...`);
+          setFeedback(`Camera ready! Resolution: ${settings.width}x${settings.height}. First capture in ${CAPTURE_INTERVAL_SEC} seconds...`);
         };
       }
     } catch (err) {
       console.error('Camera error:', err);
-      setFeedback('❌ Camera access denied. Please allow camera permissions and refresh.');
+      setFeedback('Camera access denied. Please allow camera permissions and refresh.');
     }
   };
 
@@ -151,8 +154,8 @@ function App() {
     
     console.log('🎬 Starting capture and analyze');
     setIsAnalyzing(true);
-    setFeedback('📸 Capturing and analyzing...');
-    setCountdown(3); // Reset countdown
+    setFeedback('Recording audio, please state your preferences for the photo');
+    setCountdown(CAPTURE_INTERVAL_SEC); // Reset countdown
     
     try {
       // Capture frame from video
@@ -162,7 +165,7 @@ function App() {
       if (!video || !canvas) {
         console.error('Video or canvas not ready');
         setIsAnalyzing(false);
-        setFeedback('⚠️ Camera not ready, please wait...');
+        setFeedback('Camera not ready, please wait...');
         return;
       }
       
@@ -170,7 +173,7 @@ function App() {
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
         console.error('Video not ready yet, readyState:', video.readyState);
         setIsAnalyzing(false);
-        setFeedback('⚠️ Video loading, please wait...');
+        setFeedback('Video loading, please wait...');
         return;
       }
       
@@ -181,7 +184,7 @@ function App() {
       if (canvas.width === 0 || canvas.height === 0) {
         console.error('Invalid video dimensions:', canvas.width, canvas.height);
         setIsAnalyzing(false);
-        setFeedback('⚠️ Camera initializing, please wait...');
+        setFeedback('Camera initializing, please wait...');
         return;
       }
       
@@ -195,7 +198,7 @@ function App() {
       if (!imageData || imageData.length < 1000) {
         console.error('Invalid image data captured, length:', imageData.length);
         setIsAnalyzing(false);
-        setFeedback('⚠️ Failed to capture image, retrying...');
+        setFeedback('Failed to capture image, retrying...');
         return;
       }
       
@@ -234,7 +237,7 @@ function App() {
         setChecks(result.checks || {});
         
         // Speak the feedback
-        speak(result.feedback);
+        // speak(result.feedback);
         
         if (result.accepted) {
           console.log('🎉 Photo accepted!');
@@ -253,26 +256,26 @@ function App() {
         }
         
       } else if (result.status === 'rejected') {
-        setFeedback('⏳ ' + (result.message || 'Checks failed - waiting for next capture...'));
+        setFeedback(result.message || 'Checks failed - waiting for next capture...');
         setChecks(result.checks || {});
       } else {
-        setFeedback('⚠️ ' + (result.message || 'Unknown error'));
+        setFeedback(result.message || 'Unknown error');
       }
       
     } catch (error) {
       console.error('Analysis error:', error);
       
       if (error.name === 'AbortError') {
-        setFeedback('⏱️ Request timeout. OpenAI is taking too long. Retrying in 3s...');
+        setFeedback(`Request timeout. OpenAI is taking too long. Retrying in ${CAPTURE_INTERVAL_SEC}s...`);
       } else if (error.message.includes('Failed to fetch')) {
-        setFeedback('❌ Cannot connect to backend. Is it running on port 5000?');
+        setFeedback('Cannot connect to backend. Is it running on port 5000?');
       } else {
-        setFeedback('❌ Error: ' + error.message);
+        setFeedback('Error: ' + error.message);
       }
     } finally {
       // Only set to false if not accepted
       if (!accepted) {
-        console.log('✅ Analysis complete, ready for next capture in 3s');
+        console.log(`✅ Analysis complete, ready for next capture in ${CAPTURE_INTERVAL_SEC}s`);
         setIsAnalyzing(false);
       }
     }
@@ -295,11 +298,11 @@ function App() {
     console.log('🔄 Resetting...');
     setAccepted(false);
     setIsAnalyzing(false);
-    setFeedback('Ready to go again! First capture in 3 seconds...');
+    setFeedback(`Ready to go again! First capture in ${CAPTURE_INTERVAL_SEC} seconds...`);
     setAttemptCount(0);
     setChecks({ face: false, eyes: false, blur: 0 });
     setFinalImage(null);
-    setCountdown(3);
+    setCountdown(CAPTURE_INTERVAL_SEC);
     
     // Make sure video stream is active
     if (videoRef.current && videoRef.current.srcObject) {
@@ -367,13 +370,13 @@ function App() {
               onClick={switchToCamera}
               className={`view-btn ${currentView === 'camera' ? 'active' : ''}`}
             >
-              📷 Camera
+              Camera
             </button>
             <button
               onClick={switchToGallery}
               className={`view-btn ${currentView === 'gallery' ? 'active' : ''}`}
             >
-              🖼️ Gallery ({galleryPhotos.length})
+              Gallery ({galleryPhotos.length})
             </button>
           </div>
         </header>
@@ -495,7 +498,7 @@ function App() {
                 <div className="empty-gallery">
                   <p>No photos yet! Switch to camera view and take some photos.</p>
                   <button onClick={switchToCamera} className="btn-primary">
-                    📷 Go to Camera
+                    Go to Camera
                   </button>
                 </div>
               ) : (
@@ -515,7 +518,7 @@ function App() {
                           onClick={() => downloadPhoto(photo.filename)}
                           className="download-btn"
                         >
-                          ⬇️ Download
+                          Download
                         </button>
                       </div>
                     </div>

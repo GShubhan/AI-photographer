@@ -6,6 +6,7 @@ import numpy as np
 import os
 import sys
 import time
+import threading
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -13,6 +14,7 @@ try:
     from preprocess.local_checks import face_check, eyes_open_check, isnt_blurry
     from analyze_image import llm_response, encode_image
     from STT_function import STTListener  # Import the instance, not the class
+    from TTS_function import speak
     print("✓ All modules imported successfully")
 except ImportError as e:
     print(f"✗ Import error: {e}")
@@ -94,7 +96,7 @@ def analyze():
         max_attempts = 1  # Allow retries if no speech
         
         for attempt in range(max_attempts):
-            stt_result = stt_listener.get_latest_text(timeout=15)  # Increased timeout
+            stt_result = stt_listener.get_latest_text(timeout=25)  # Increased timeout
             
             if stt_result and stt_result['status'] == 'success':
                 text = stt_result['text']
@@ -122,6 +124,10 @@ def analyze():
         
         print(f"✅ Got feedback: {feedback}")
         print(f"⏱️  API took {api_duration:.1f}s")
+
+        # Play audio on the server (background thread to not block response)
+        print("🔊 Playing ElevenLabs audio...")
+        threading.Thread(target=speak, args=(feedback,), daemon=True).start()
         
         is_accepted = 'accepted' in feedback.lower()
         
