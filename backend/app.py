@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import base64
 import cv2
 import numpy as np
 import os
 import sys
+import time
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -140,6 +141,13 @@ def analyze():
             with open('temp.jpg', 'rb') as f:
                 img_data = base64.b64encode(f.read()).decode('utf-8')
                 response_data['final_image'] = f"data:image/jpeg;base64,{img_data}"
+
+            # Save to gallery with timestamp
+            import time
+            timestamp = int(time.time())
+            gallery_path = f'gallery/photo_{timestamp}.jpg'
+            cv2.imwrite(gallery_path, img)
+            print(f"💾 Saved to gallery: {gallery_path}")
         
         total_duration = time.time() - start_time
         print(f"✅ Total request time: {total_duration:.1f}s")
@@ -155,10 +163,51 @@ def analyze():
             'message': str(e)
         }), 500
 
-@app.route('/api/health', methods=['GET'])
-def health():
-    """Check if backend is running"""
-    return jsonify({'status': 'ok', 'message': 'Backend is running'})
+@app.route('/api/gallery', methods=['GET'])
+def get_gallery():
+    """Get list of gallery photos"""
+    try:
+        import os
+        gallery_dir = 'gallery'
+        if not os.path.exists(gallery_dir):
+            return jsonify({'photos': []})
+
+        photos = []
+        for filename in sorted(os.listdir(gallery_dir), reverse=True):  # Most recent first
+            if filename.endswith('.jpg'):
+                filepath = os.path.join(gallery_dir, filename)
+                # Get file modification time
+                mod_time = os.path.getmtime(filepath)
+                photos.append({
+                    'filename': filename,
+                    'timestamp': int(mod_time),
+                    'url': f'/api/gallery/download/{filename}'
+                })
+
+        return jsonify({'photos': photos})
+
+    except Exception as e:
+        print(f"❌ Gallery error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/gallery/download/<filename>', methods=['GET'])
+def download_photo(filename):
+    """Download a specific photo"""
+    try:
+        import os
+        from flask import send_from_directory
+
+        gallery_dir = 'gallery'
+        filepath = os.path.join(gallery_dir, filename)
+
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'Photo not found'}), 404
+
+        return send_from_directory(gallery_dir, filename, as_attachment=True)
+
+    except Exception as e:
+        print(f"❌ Download error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("🚀 Starting Flask server...")

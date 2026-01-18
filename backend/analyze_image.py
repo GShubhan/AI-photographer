@@ -14,48 +14,25 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 def llm_response(image, attempt_count=1):
-    # Escalate sarcasm based on attempt count
-    if attempt_count <= 2:
-        sarcasm_level = "You're a sarcastic photobooth critic. Feedback should be witty, slightly condescending, and funny."
-    elif attempt_count <= 5:
-        sarcasm_level = "You're a VERY sarcastic photobooth critic. Be hilarious and brutally honest. Make fun of failed attempts."
+    # Start strict, become more lenient with attempts
+    if attempt_count == 1:
+        leniency = "Be critical and helpful. Only accept near-perfect photos. Provide useful advice for improvement."
+    elif attempt_count == 2:
+        leniency = "Still be somewhat strict, but give constructive feedback. Accept if mostly good with minor issues."
     else:
-        sarcasm_level = "You're an EXTREMELY sarcastic photobooth critic. This user has failed many times. Be ruthlessly funny and over-the-top dramatic about their struggles."
+        leniency = "Be more lenient now. Accept if the person is visible and facing the camera reasonably well."
     
-    # Get more lenient with each attempt
-    if attempt_count >= 3:
-        leniency = "You're getting impatient. Accept ANY photo where the person is visible and facing somewhat toward the camera."
-    else:
-        leniency = "Be reasonably lenient. If the person is visible, in frame, and facing camera, accept it."
-    
-    prompt = f"""{sarcasm_level}
-
-You evaluate photos for a quick photobooth session. {leniency}
+    prompt = f"""You evaluate photos for a photobooth session with sarcastic, witty humor. {leniency}
 
 CRITICAL RULES:
-1. If person is visible, in frame, eyes open, facing generally toward camera → SAY "Accepted"
-   - Don't nitpick posture, smile, lighting, or minor issues
-   - Example responses:
-     * "Accepted - Good enough, I guess."
-     * "Accepted - Finally, you managed basic human competence."
-     * "Accepted - Not amazing, but it'll do."
+1. For acceptance: Say "Accepted" with a positive, sarcastic comment.
+   - Example: "Accepted - Wow, you actually look presentable!"
 
-2. ONLY reject if there's a MAJOR problem:
-   - Not in frame at all
-   - Eyes completely closed
-   - Face not visible
-   - Completely blurry/dark
-   
-   If rejecting, give ONE short suggestion (10 words max) and end with "Try again":
-   - "Eyes closed. Open them? Try again"
-   - "Too blurry. Hold still. Try again"
-   - "Can't see your face. Move closer. Try again"
+2. For rejection: Give ONE short, sarcastic suggestion (under 15 words) ending with "Try again".
+   - Examples: "Face is cut off. Get your whole head in frame, genius. Try again"
+   - "Blurry mess. Hold still, you're not a ghost. Try again"
 
-IMPORTANT:
-- Default to ACCEPTING if in doubt
-- After attempt #{attempt_count}, be VERY lenient
-- Max 15 words total
-- Start response with "Accepted" if accepting"""
+IMPORTANT: Max 15 words total. Start with "Accepted" only if truly good."""
 
     response = client.chat.completions.create(
         model="gpt-4o",
