@@ -87,30 +87,36 @@ def analyze():
         stt_listener.clear_queue()
         stt_listener.start_listening()
         
-        # ===== PROCESS IMAGE WITH LLM =====
-        print("🤖 Calling OpenAI API...")
-        api_start = time.time()
-        base64_image = encode_image('temp.jpg')
-        
-        # Wait for STT text (up to 8 seconds)
+        # ===== WAIT FOR STT TEXT (MANDATORY, UP TO 15 SECONDS) =====
+        print("🎤 Waiting for user voice input...")
         text = ""
         still_listening = True
+        max_attempts = 1  # Allow retries if no speech
         
-        stt_result = stt_listener.get_latest_text(timeout=8)
-        
-        if stt_result:
-            if stt_result['status'] == 'success':
+        for attempt in range(max_attempts):
+            stt_result = stt_listener.get_latest_text(timeout=15)  # Increased timeout
+            
+            if stt_result and stt_result['status'] == 'success':
                 text = stt_result['text']
                 still_listening = stt_result['still_listening']
                 print(f"✅ Got speech: {text}")
+                break
             else:
-                print(f"⚠️  STT error: {stt_result['error']}")
-        else:
-            print("⚠️  No speech detected (timeout)")
+                print(f"⚠️  No speech detected (attempt {attempt+1}/{max_attempts})")
+                if attempt < max_attempts - 1:
+                    print("🎤 Listening again...")
+                else:
+                    # If still no speech, use a default prompt or reject
+                    text = "No voice input detected. Please say something!"
         
         stt_listener.stop_listening()
         
-        # Call LLM with text + image
+        # ===== PROCESS IMAGE WITH LLM (NOW WITH VOICE) =====
+        print("🤖 Calling OpenAI API with image and voice...")
+        api_start = time.time()
+        base64_image = encode_image('temp.jpg')
+        
+        # Call LLM with text + image (voice is now guaranteed)
         feedback = llm_response(text, base64_image, attempt_count=attempt_count)
         api_duration = time.time() - api_start
         
@@ -139,7 +145,6 @@ def analyze():
                 response_data['final_image'] = f"data:image/jpeg;base64,{img_data}"
 
             # Save to gallery with timestamp
-            import time
             timestamp = int(time.time())
             gallery_path = f'gallery/photo_{timestamp}.jpg'
             cv2.imwrite(gallery_path, img)
