@@ -12,10 +12,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     from preprocess.local_checks import face_check, eyes_open_check, isnt_blurry
     from analyze_image import llm_response, encode_image
-    from STT_function import start_listening, stop_listening, get_text, clear_queue
+    from STT_function import STTListener  # Import the instance, not the class
     print("✓ All modules imported successfully")
 except ImportError as e:
     print(f"✗ Import error: {e}")
+    import traceback
+    traceback.print_exc()
 
 app = Flask(__name__)
 CORS(app)
@@ -29,6 +31,8 @@ def analyze():
     """
     start_time = time.time()
     
+    stt_listener = STTListener()
+
     try:
         print("📥 Received analysis request")
         
@@ -71,7 +75,6 @@ def analyze():
             return jsonify({
                 'status': 'rejected',
                 'reason': 'local_checks_failed',
-                'message': f'Face: {has_face}, Eyes: {eyes_open}, Blur: {blur_score:.1f}',
                 'checks': {
                     'face': has_face,
                     'eyes': eyes_open,
@@ -89,25 +92,22 @@ def analyze():
         api_start = time.time()
         base64_image = encode_image('temp.jpg')
         
-        # Wait for STT text (up to 8 seconds while processing)
+        # Wait for STT text (up to 8 seconds)
         text = ""
+        still_listening = True
+        
         stt_result = stt_listener.get_latest_text(timeout=8)
         
         if stt_result:
             if stt_result['status'] == 'success':
                 text = stt_result['text']
-                print(f"✅ Got speech: {text}")
                 still_listening = stt_result['still_listening']
+                print(f"✅ Got speech: {text}")
             else:
                 print(f"⚠️  STT error: {stt_result['error']}")
-                text = ""
-                still_listening = True
         else:
             print("⚠️  No speech detected (timeout)")
-            text = ""
-            still_listening = True
         
-        # Stop listener
         stt_listener.stop_listening()
         
         # Call LLM with text + image
@@ -117,7 +117,6 @@ def analyze():
         print(f"✅ Got feedback: {feedback}")
         print(f"⏱️  API took {api_duration:.1f}s")
         
-        # Check if accepted
         is_accepted = 'accepted' in feedback.lower()
         
         response_data = {
@@ -133,7 +132,6 @@ def analyze():
             }
         }
         
-        # If accepted, include the image
         if is_accepted:
             print("🎉 PHOTO ACCEPTED!")
             with open('temp.jpg', 'rb') as f:

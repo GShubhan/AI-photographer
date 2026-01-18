@@ -46,7 +46,7 @@ class STTListener:
                         
                         # Check for commands
                         still_listening = True
-                        if "i am done" in text.lower() or "shut up" in text.lower():
+                        if "i am done" in text.lower():
                             print("finally you stop talking")
                             still_listening = False
                         
@@ -116,6 +116,14 @@ class STTListener:
 # Global instance
 stt_listener = STTListener()
 
+# stt_listener.start_listening()
+# cnt = 0
+
+# while True:
+#     print(stt_listener.get_latest_text())
+#     cnt+=1
+#     if cnt>100 or not stt_listener.listening:
+#         break
 
 # Keep backward compatibility
 def stt_function(listening):
