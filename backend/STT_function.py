@@ -114,7 +114,8 @@ class STTListener:
 
 
 # Global instance
-stt_listener = STTListener()
+
+STT_Listener = STTListener()
 
 # stt_listener.start_listening()
 # cnt = 0
