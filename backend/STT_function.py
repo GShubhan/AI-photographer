@@ -118,7 +118,8 @@ class STTListener:
 
 
 # Global instance
-stt_listener = STTListener()
+
+STT_Listener = STTListener()
 
 <<<<<<< HEAD
 =======
