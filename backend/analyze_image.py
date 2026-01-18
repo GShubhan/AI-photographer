@@ -13,26 +13,46 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def llm_response(image, attempt_count=1):
-    # Start strict, become more lenient with attempts
-    if attempt_count == 1:
-        leniency = "Be critical and helpful. Only accept near-perfect photos. Provide useful advice for improvement."
-    elif attempt_count == 2:
-        leniency = "Still be somewhat strict, but give constructive feedback. Accept if mostly good with minor issues."
+def llm_response(voice_input, image, attempt_count=1):
+    # Escalate sarcasm based on attempt count
+
+    if attempt_count <= 2:
+        sarcasm_level = "You're a sarcastic photobooth critic. Feedback should be witty, slightly condescending, and funny."
+    elif attempt_count <= 5:
+        sarcasm_level = "You're a VERY sarcastic photobooth critic. Be hilarious and brutally honest. Make fun of failed attempts."
     else:
         leniency = "Be more lenient now. Accept if the person is visible and facing the camera reasonably well."
     
-    prompt = f"""You evaluate photos for a photobooth session with sarcastic, witty humor. {leniency}
+    if voice_input:
+        prompt = sarcasm_level + "Respond to the user:" + voice_input + "Now give them some useless feedback that makes their photo worse."
+    
+    else:
+        # Get more lenient with each attempt
+        if attempt_count >= 3:
+            leniency = "You're getting impatient. Accept ANY photo where the person is visible and facing somewhat toward the camera."
+        else:
+            leniency = "Be reasonably lenient. If the person is visible, in frame, and facing camera, accept it."
+        
+        prompt = f"""{sarcasm_level}
+
+You evaluate photos for a quick photobooth session. {leniency}
 
 CRITICAL RULES:
-1. For acceptance: Say "Accepted" with a positive, sarcastic comment.
-   - Example: "Accepted - Wow, you actually look presentable!"
+1. If person is visible, in frame, eyes open, facing generally toward camera → SAY "Accepted"
+   - Don't nitpick posture, smile, lighting, or minor issues
+   - Example responses:
+     * "Accepted - Okay lah, next time get some bitches."
+     * "Accepted - u still friendless leh."
+     * "Accepted - jokes."
 
 2. For rejection: Give ONE short, sarcastic suggestion (under 15 words) ending with "Try again".
    - Examples: "Face is cut off. Get your whole head in frame, genius. Try again"
    - "Blurry mess. Hold still, you're not a ghost. Try again"
 
-IMPORTANT: Max 15 words total. Start with "Accepted" only if truly good."""
+IMPORTANT:
+- After attempt #{attempt_count}, be VERY lenient
+- Max 15 words total
+- Start response with "Accepted" if accepting"""
 
     response = client.chat.completions.create(
         model="gpt-4o",
