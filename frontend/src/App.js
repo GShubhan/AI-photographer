@@ -16,6 +16,8 @@ function App() {
   const [finalImage, setFinalImage] = useState(null);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
+  const [currentView, setCurrentView] = useState('camera'); // 'camera' or 'gallery'
+  const [galleryPhotos, setGalleryPhotos] = useState([]);
 
   // Start camera when component loads
   useEffect(() => {
@@ -237,7 +239,7 @@ function App() {
         if (result.accepted) {
           console.log('🎉 Photo accepted!');
           setAccepted(true);
-          setFeedback('✅ ' + result.feedback);
+          setFeedback(result.feedback);
           
           // Save final image
           if (result.final_image) {
@@ -317,17 +319,70 @@ function App() {
     }
   };
 
+  // Gallery functions
+  const fetchGallery = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/gallery');
+      const data = await response.json();
+      setGalleryPhotos(data.photos || []);
+    } catch (error) {
+      console.error('Failed to fetch gallery:', error);
+    }
+  };
+
+  const downloadPhoto = async (filename) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/gallery/download/${filename}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to download photo:', error);
+    }
+  };
+
+  const switchToGallery = () => {
+    setCurrentView('gallery');
+    fetchGallery();
+  };
+
+  const switchToCamera = () => {
+    setCurrentView('camera');
+  };
+
   return (
     <div className="App">
       <div className="container">
         <header>
-          <h1>📸 Sarcastic AI Photographer</h1>
-          <p className="subtitle">Let's see if you can take a decent photo...</p>
+          <h1>PhotoRoast</h1>
+          <p className="subtitle">Powered by Computer Vision & OpenAI</p>
+          <div className="view-switcher">
+            <button
+              onClick={switchToCamera}
+              className={`view-btn ${currentView === 'camera' ? 'active' : ''}`}
+            >
+              📷 Camera
+            </button>
+            <button
+              onClick={switchToGallery}
+              className={`view-btn ${currentView === 'gallery' ? 'active' : ''}`}
+            >
+              🖼️ Gallery ({galleryPhotos.length})
+            </button>
+          </div>
         </header>
 
         <div className="main-content">
-          {/* Camera View */}
-          <div className="camera-section">
+          {currentView === 'camera' ? (
+            <>
+              {/* Camera View */}
+              <div className="camera-section">
             <div className="camera-container">
               <video 
                 ref={videoRef} 
@@ -348,33 +403,19 @@ function App() {
               {/* Countdown overlay */}
               {cameraReady && !isAnalyzing && !accepted && (
                 <div className="countdown-overlay">
-                  Next capture in: {countdown}s
+                  Next: {countdown}s
                 </div>
               )}
               
               {/* Analyzing overlay */}
               {isAnalyzing && !accepted && (
                 <div className="analyzing-overlay">
-                  🤔 Analyzing...
+                  Analyzing...
                 </div>
               )}
               
               <canvas ref={canvasRef} style={{ display: 'none' }} />
               
-              {/* Overlay indicators */}
-              {cameraReady && !accepted && (
-                <div className="overlay-checks">
-                  <span className={checks.face ? 'check-pass' : 'check-fail'}>
-                    {checks.face ? '✓' : '✗'} Face
-                  </span>
-                  <span className={checks.eyes ? 'check-pass' : 'check-fail'}>
-                    {checks.eyes ? '✓' : '✗'} Eyes
-                  </span>
-                  <span className={checks.blur > 30 ? 'check-pass' : 'check-fail'}>
-                    {checks.blur > 30 ? '✓' : '✗'} Focus
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Controls */}
@@ -386,7 +427,7 @@ function App() {
                     disabled={isAnalyzing}
                     className="btn-primary"
                   >
-                    {isAnalyzing ? '⏳ Analyzing...' : '📸 Capture Now'}
+                    {isAnalyzing ? 'Analyzing...' : 'Capture Now'}
                   </button>
                   
                   {/* Camera selector dropdown */}
@@ -408,7 +449,7 @@ function App() {
                 </>
               ) : (
                 <button onClick={reset} className="btn-secondary">
-                  🔄 Take Another Photo
+                  Take Another Photo
                 </button>
               )}
             </div>
@@ -417,9 +458,6 @@ function App() {
           {/* Feedback Section */}
           <div className="feedback-section">
             <div className={`feedback-card ${accepted ? 'accepted' : ''}`}>
-              <div className="feedback-icon">
-                {isAnalyzing ? '🤔' : accepted ? '🎉' : '💭'}
-              </div>
               <p className="feedback-text">{feedback}</p>
               <div className="attempt-counter">
                 Attempt #{attemptCount}
@@ -429,25 +467,63 @@ function App() {
             {/* Stats */}
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-label">Face Detected</div>
+                <div className="stat-label">Face</div>
                 <div className={`stat-value ${checks.face ? 'good' : 'bad'}`}>
-                  {checks.face ? 'Yes ✓' : 'No ✗'}
+                  {checks.face ? 'Detected' : 'Not Found'}
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-label">Eyes Open</div>
+                <div className="stat-label">Eyes</div>
                 <div className={`stat-value ${checks.eyes ? 'good' : 'bad'}`}>
-                  {checks.eyes ? 'Yes ✓' : 'No ✗'}
+                  {checks.eyes ? 'Open' : 'Closed'}
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-label">Image Quality</div>
+                <div className="stat-label">Quality</div>
                 <div className={`stat-value ${checks.blur > 30 ? 'good' : 'bad'}`}>
-                  {checks.blur ? checks.blur.toFixed(1) : '—'}
+                  {checks.blur ? checks.blur.toFixed(0) : '—'}
                 </div>
               </div>
             </div>
           </div>
+          </>
+          ) : (
+            /* Gallery View */
+            <div className="gallery-section">
+              <h2>Your Photo Gallery</h2>
+              {galleryPhotos.length === 0 ? (
+                <div className="empty-gallery">
+                  <p>No photos yet! Switch to camera view and take some photos.</p>
+                  <button onClick={switchToCamera} className="btn-primary">
+                    📷 Go to Camera
+                  </button>
+                </div>
+              ) : (
+                <div className="gallery-grid">
+                  {galleryPhotos.map((photo) => (
+                    <div key={photo.filename} className="gallery-item">
+                      <img
+                        src={`http://localhost:5000/api/gallery/download/${photo.filename}`}
+                        alt={`Photo from ${new Date(photo.timestamp * 1000).toLocaleString()}`}
+                        onError={(e) => {
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5JbWFnZSBFcnJvcjwvdGV4dD48L3N2Zz4=';
+                        }}
+                      />
+                      <div className="gallery-item-info">
+                        <small>{new Date(photo.timestamp * 1000).toLocaleString()}</small>
+                        <button
+                          onClick={() => downloadPhoto(photo.filename)}
+                          className="download-btn"
+                        >
+                          ⬇️ Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
