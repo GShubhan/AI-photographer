@@ -363,7 +363,7 @@ function App() {
     <div className="App">
       <div className="container">
         <header>
-          <h1>PhotoRoast</h1>
+          <h1>Shinchai Hasho Hasho</h1>
           <p className="subtitle">Powered by Computer Vision & OpenAI</p>
           <div className="view-switcher">
             <button

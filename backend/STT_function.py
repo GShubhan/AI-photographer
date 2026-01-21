@@ -32,7 +32,7 @@ class STTListener:
         try:
             with sr.Microphone() as source:
                 self.r.adjust_for_ambient_noise(source, duration=1)
-                self.r.pause_threshold = 2.0
+                self.r.pause_threshold = 1.0
                 print("Speak something...")
                 
                 while self.listening:

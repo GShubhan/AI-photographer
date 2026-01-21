@@ -4,7 +4,7 @@ import pygame
 import time
 
 # Replace with your ElevenLabs API key
-client = ElevenLabs(api_key="sk_629c420fff32c41473bbc2c81579dea4e81626ba5af4b709")
+client = ElevenLabs(api_key="sk_da6915a85e5bd437709400d344b0076b72f136cd982bc155")
 
 pygame.mixer.init()
 
